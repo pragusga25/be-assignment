@@ -1,0 +1,51 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String           @id @default(uuid())
+  email           String           @unique
+  createdAt       DateTime         @default(now()) @map("created_at")
+  paymentAccounts PaymentAccount[]
+}
+
+model PaymentAccount {
+  id                 String             @id @default(uuid())
+  balance            Float
+  paymentAccountId   String             @unique @map("payment_account_id")
+  paymentAccountType PaymentAccountType @map("payment_account_type")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  userId             String             @map("user_id")
+  user               User               @relation(fields: [userId], references: [id])
+  sentPayments       PaymentHistory[]   @relation("SentPayments")
+  receivedPayments   PaymentHistory[]   @relation("ReceivedPayments")
+}
+
+model PaymentHistory {
+  id                   String         @id @default(uuid())
+  toPaymentAccountId   String         @map("to_payment_account_id")
+  fromPaymentAccountId String         @map("from_payment_account_id")
+  amount               Float
+  status               PaymentStatus
+  createdAt            DateTime       @default(now()) @map("created_at")
+  toAccount            PaymentAccount @relation("ReceivedPayments", fields: [toPaymentAccountId], references: [paymentAccountId])
+  fromAccount          PaymentAccount @relation("SentPayments", fields: [fromPaymentAccountId], references: [paymentAccountId])
+}
+
+enum PaymentAccountType {
+  DEBIT
+  LOAN
+  CREDIT
+}
+
+enum PaymentStatus {
+  COMPLETED
+  FAILED
+  PENDING
+}

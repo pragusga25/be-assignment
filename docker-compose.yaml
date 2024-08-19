@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - '80:80'
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - account
+      - payment
+    networks:
+      - concrete-network
+
+  account:
+    build:
+      context: ./account
+      dockerfile: Dockerfile
+    env_file:
+      - ./account/.env
+    depends_on:
+      - account_db
+      - redis
+    networks:
+      - concrete-network
+
+  payment:
+    build:
+      context: ./payment
+      dockerfile: Dockerfile
+    env_file:
+      - ./payment/.env
+    depends_on:
+      - payment_db
+      - redis
+    networks:
+      - concrete-network
+
+  payment_db:
+    image: postgres:13
+    container_name: payment_db
+    environment:
+      POSTGRES_DB: payment
+      POSTGRES_USER: payment
+      POSTGRES_PASSWORD: paymentpassword
+    ports:
+      - '5432:5432'
+    volumes:
+      - payment-data:/var/lib/postgresql/data
+    networks:
+      - concrete-network
+
+  account_db:
+    image: mongo:latest
+    container_name: account_db
+    ports:
+      - '27017:27017'
+    volumes:
+      - account_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=rootpassword
+      - MONGO_INITDB_DATABASE=account
+    networks:
+      - concrete-network
+
+  redis:
+    image: redis:latest
+    container_name: account_redis
+    command: redis-server --requirepass redispassword
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    networks:
+      - concrete-network
+
+volumes:
+  payment-data:
+  account_data:
+  redis-data:
+
+networks:
+  concrete-network:
+    driver: bridge
